@@ -15,7 +15,7 @@ test01AliveCellWithLessThanTwoAliveNeighDies
 	
 	self assert: (gameOfLife isDeadAt: 1@1) ! !
 
-!GOLTest methodsFor: 'Testing' stamp: 'HAW 5/11/2017 21:14:14'!
+!GOLTest methodsFor: 'Testing' stamp: 'AM 5/16/2017 00:13:59'!
 test02AliveCellWithTwoAliveNeighStaysAlive
 
 	|gameOfLife |
@@ -23,9 +23,9 @@ test02AliveCellWithTwoAliveNeighStaysAlive
 	gameOfLife := GameOfLife withLiveCells: { 1@1. 2@0. 1@0. }  withSize: 3@3.
 	gameOfLife nextGeneration.
 	
-	self deny: (gameOfLife isDeadAt: 1@1) ! !
+	self assert: (gameOfLife isAliveAt: 1@1) ! !
 
-!GOLTest methodsFor: 'Testing' stamp: 'HAW 5/11/2017 21:14:19'!
+!GOLTest methodsFor: 'Testing' stamp: 'AM 5/16/2017 00:13:48'!
 test03AliveCellWithThreeAliveNeighStaysAlive
 
 	|gameOfLife |
@@ -33,7 +33,7 @@ test03AliveCellWithThreeAliveNeighStaysAlive
 	gameOfLife := GameOfLife withLiveCells: { 1@1. 2@0. 1@0. 1@2. }  withSize: 3@3.
 	gameOfLife nextGeneration.
 	
-	self deny: (gameOfLife isDeadAt: 1@1) ! !
+	self assert: (gameOfLife isAliveAt: 1@1) ! !
 
 !GOLTest methodsFor: 'Testing' stamp: 'HAW 5/11/2017 21:14:25'!
 test04AliveCellWithMoreThanThreeAliveNeighDies
@@ -45,7 +45,7 @@ test04AliveCellWithMoreThanThreeAliveNeighDies
 	
 	self assert: (gameOfLife isDeadAt: 1@1) ! !
 
-!GOLTest methodsFor: 'Testing' stamp: 'HAW 5/11/2017 21:01:13'!
+!GOLTest methodsFor: 'Testing' stamp: 'AM 5/16/2017 00:13:36'!
 test05DeadCellWithThreeAliveNeighResurects
 
 	|gameOfLife |
@@ -53,7 +53,7 @@ test05DeadCellWithThreeAliveNeighResurects
 	gameOfLife := GameOfLife withLiveCells: { 2@0. 1@0. 0@0 } withSize: 3@3.
 	gameOfLife nextGeneration.
 	
-	self deny: (gameOfLife isDeadAt: 1@1) ! !
+	self assert: (gameOfLife isAliveAt: 1@1) ! !
 
 !GOLTest methodsFor: 'Testing' stamp: 'JG 5/15/2017 21:40:46'!
 test06CreateCellOutsideBounds
@@ -139,6 +139,11 @@ hasToSurvive: aCell
 	numberOfAliveNeighbours := self numberOfAliveNeighboursOf: aCell.
 	
 	^numberOfAliveNeighbours = 2 or:  [numberOfAliveNeighbours = 3]! !
+
+!GameOfLife methodsFor: 'inspecting' stamp: 'AM 5/16/2017 00:13:15'!
+isAliveAt: aCell
+
+	^(aliveCells includes: aCell)! !
 
 !GameOfLife methodsFor: 'inspecting' stamp: 'HAW 5/10/2017 10:28:24'!
 isDeadAt: aCell
