@@ -5,15 +5,19 @@ Magnitude subclass: #Measure
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!Measure methodsFor: 'arithmetic' stamp: 'AM 6/5/2017 14:56:52'!
-* anAmount
+!Measure methodsFor: 'arithmetic' stamp: 'JG 6/6/2017 01:06:25'!
+* anAmountOrAMeasure
 
-	^ Measure withAmount: (amount * anAmount) withUnit: unit! !
+	^ (anAmountOrAMeasure isKindOf: self class) 
+		ifTrue: [ self timesMeasure: anAmountOrAMeasure ]
+		ifFalse: [ self timesAmount: anAmountOrAMeasure ]! !
 
-!Measure methodsFor: 'arithmetic' stamp: 'AM 6/5/2017 15:54:05'!
+!Measure methodsFor: 'arithmetic' stamp: 'JG 6/5/2017 21:40:07'!
 + aMeasure 
 	
-	^ Measure withAmount: (((self absoluteAmount) + (aMeasure absoluteAmount)) / (unit unitMultiplier)) withUnit: unit! !
+	^ (unit isOfTheSameTypeAs: aMeasure unit) 
+		ifTrue: [ Measure withAmount: ((self absoluteAmount + aMeasure absoluteAmount) / unit unitMultiplier) withUnit: unit ]
+		ifFalse: [ Measures new add: self; add: aMeasure; value]! !
 
 !Measure methodsFor: 'arithmetic' stamp: 'JG 5/30/2017 13:55:40'!
 - aDistance 
@@ -40,17 +44,33 @@ printString
 	
 	^ stringWithoutAnSAtTheEnd ! !
 
+!Measure methodsFor: 'arithmetic' stamp: 'JG 6/6/2017 01:05:22'!
+timesAmount: anAmount
+
+	^ Measure withAmount: (amount * anAmount) withUnit: unit! !
+
+!Measure methodsFor: 'arithmetic' stamp: 'JG 6/6/2017 01:15:22'!
+timesMeasure: aMeasure
+
+	^ Measure withAmount: amount * aMeasure amount withUnit: (CompoundUnit with: unit and: aMeasure unit withConnection: #* ofType: (unit type , ' times ' , aMeasure unitType)! !
+
 
 !Measure methodsFor: 'comparing' stamp: 'AM 6/5/2017 15:54:44'!
 < aDistance 
 
 	^ self absoluteAmount < (aDistance absoluteAmount)! !
 
-!Measure methodsFor: 'comparing' stamp: 'AM 6/5/2017 15:55:13'!
+!Measure methodsFor: 'comparing' stamp: 'JG 6/5/2017 22:15:27'!
 = aMeasure
 	
 	^ (aMeasure isKindOf: self class)
+		and: [(unit isCompatibleWith: aMeasure unit) or: [amount = 0 and: [aMeasure amount = 0] ]]
 		and: [self absoluteAmount  = (aMeasure absoluteAmount)]! !
+
+!Measure methodsFor: 'comparing' stamp: 'JG 6/5/2017 19:57:19'!
+hash
+
+	^ self absoluteAmount hash! !
 
 
 !Measure methodsFor: 'converting' stamp: 'AM 5/25/2017 15:31:19'!
@@ -59,10 +79,12 @@ adaptToNumber: aSmallInteger andSend: aSymbol
 	^ self perform: aSymbol with: aSmallInteger
 ! !
 
-!Measure methodsFor: 'converting' stamp: 'AM 6/5/2017 15:56:03'!
+!Measure methodsFor: 'converting' stamp: 'JG 6/5/2017 21:51:51'!
 convertTo: aUnit
 
-	^ Measure withAmount: ( amount * ( unit unitMultiplier / aUnit unitMultiplier ) ) withUnit: aUnit! !
+	^ (unit isCompatibleWith: aUnit) 
+		ifTrue: [ Measure withAmount: ( amount * ( unit unitMultiplier / aUnit unitMultiplier ) ) withUnit: aUnit ]
+		ifFalse: [ self error: LabeledUnit incompatibleUnitsErrorDescription]! !
 
 !Measure methodsFor: 'converting' stamp: 'JG 5/27/2017 21:25:16'!
 to: aDistance 
@@ -99,6 +121,11 @@ unitMultiplier
 
 	^ unit unitMultiplier! !
 
+!Measure methodsFor: 'accessing' stamp: 'JG 6/6/2017 01:15:52'!
+unitType
+
+	^ unit type! !
+
 
 !Measure methodsFor: 'initialization' stamp: 'JG 6/4/2017 18:36:01'!
 initializeWithAmount: anAmount withUnit: aUnit
@@ -107,12 +134,6 @@ initializeWithAmount: anAmount withUnit: aUnit
 	unit _ aUnit.
 	
 	^ self! !
-
-
-!Measure methodsFor: 'as yet unclassified' stamp: 'JG 6/4/2017 23:21:55'!
-hash
-
-	^ (amount * unit meterMultiplier) hash! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -214,6 +235,14 @@ from: startDistance to: stopDistance by: stepDistance
 		setFrom: startDistance 
 		to: stopDistance 
 		by: stepDistance! !
+
+
+!classDefinition: #Measures category: #'Measure-Solution'!
+Bag subclass: #Measures
+	instanceVariableNames: ''
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Measure-Solution'!
 
 
 !classDefinition: #TestDistancia category: #'Measure-Solution'!
@@ -392,15 +421,175 @@ test14ADistanceIntervalWithCustomStepCanBeTraveled
 	! !
 
 
-!classDefinition: #TestTemperature category: #'Measure-Solution'!
-TestCase subclass: #TestTemperature
+!classDefinition: #TestMeasures category: #'Measure-Solution'!
+TestCase subclass: #TestMeasures
 	instanceVariableNames: ''
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!TestTemperature methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 14:27:37'!
-test01AllCelsiusAreTheSame
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 20:17:30'!
+test01AddingGramsAndKilograms
+
+	| oneHundredGrams oneKilogram elevenHundredGrams |
+	
+	oneKilogram _ MeasureFactory new oneKilogram.
+	oneHundredGrams _ Measure withAmount: 100 withUnit: (MeasureFactory new gram).
+	elevenHundredGrams _ Measure withAmount: 1100 withUnit: (MeasureFactory new gram).
+	
+	self assert: oneKilogram + oneHundredGrams equals: elevenHundredGrams.
+	self assert: oneHundredGrams + oneKilogram equals: elevenHundredGrams.	
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 20:28:11'!
+test02SubstractingCentavosFromPesos
+
+	| tenPesos fiveCentavos ninePesosAndNinetyfiveCentavos |
+	
+	tenPesos _ Measure withAmount: 10 withUnit: (MeasureFactory new peso).
+	fiveCentavos _ Measure withAmount: 5 withUnit: (MeasureFactory new centavo).
+	ninePesosAndNinetyfiveCentavos _ Measure withAmount: 995 withUnit: (MeasureFactory new centavo).
+	
+	self assert: tenPesos - fiveCentavos equals: ninePesosAndNinetyfiveCentavos.
+
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 20:33:05'!
+test03MultiplyingDollarsByANumber
+
+	| fiftyDollars fiveHundredDollars |
+	
+	fiftyDollars _ Measure withAmount: 50 withUnit: (MeasureFactory new dollar).
+	fiveHundredDollars _ Measure withAmount: 500 withUnit: (MeasureFactory new dollar).
+	
+	self assert: fiftyDollars * 10 equals: fiveHundredDollars.
+
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 20:35:38'!
+test04DividingLitersByANumber
+
+	| thirtyLiters threeLiters |
+	
+	thirtyLiters _ Measure withAmount: 30 withUnit: (MeasureFactory new liter).
+	threeLiters _ Measure withAmount: 3 withUnit: (MeasureFactory new liter).
+	
+	self assert: thirtyLiters / 10 equals: threeLiters.
+
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 20:42:35'!
+test05AddingPesosAndDollarsDoesntResultInAnAmountOfPesosOrDollars
+
+	| tenPesos fiftyDollars sixtyDollars sixtyPesos |
+	
+	tenPesos _ Measure withAmount: 10 withUnit: (MeasureFactory new peso).
+	fiftyDollars _ Measure withAmount: 50 withUnit: (MeasureFactory new dollar).
+	sixtyPesos _ Measure withAmount: 60 withUnit: (MeasureFactory new peso).
+	sixtyDollars _ Measure withAmount: 60 withUnit: (MeasureFactory new dollar).
+	
+	self deny: tenPesos + fiftyDollars = sixtyPesos.
+	self deny: tenPesos + fiftyDollars = sixtyDollars.
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 21:34:43'!
+test06AddingPesosAndDollarsResultsInACollectionWithPesosAndDollars
+
+	| tenPesos fiftyDollars |
+	
+	tenPesos _ Measure withAmount: 10 withUnit: (MeasureFactory new peso).
+	fiftyDollars _ Measure withAmount: 50 withUnit: (MeasureFactory new dollar).
+	
+	self assert: (tenPesos + fiftyDollars includes: tenPesos).
+	self assert: (tenPesos + fiftyDollars includes: fiftyDollars).
+	self assert: tenPesos + fiftyDollars equals: fiftyDollars + tenPesos.
+
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 21:44:19'!
+test07SubstractingLitersFromKilogramsResultsInACollectionWithLitersAndNegativeKilograms
+
+	| oneKilogram thirtyLiters minusThirtyLiters |
+	
+	oneKilogram _ Measure withAmount: 1 withUnit: (MeasureFactory new kilogram).
+	thirtyLiters _ Measure withAmount: 30 withUnit: (MeasureFactory new liter).
+	minusThirtyLiters _ Measure withAmount: -30 withUnit: (MeasureFactory new liter).
+	
+	self assert: (oneKilogram - thirtyLiters includes: oneKilogram).
+	self assert: (oneKilogram - thirtyLiters includes: minusThirtyLiters).
+	self assert: oneKilogram + thirtyLiters equals: thirtyLiters + oneKilogram.
+
+	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 21:59:17'!
+test08ConvertingKilogramsToGrams
+
+	| oneKilogram oneThousandGrams oneKilogramConvertedToGrams |
+	
+	oneKilogram _ MeasureFactory new oneKilogram.
+	oneThousandGrams _ Measure withAmount: 1000 withUnit: (MeasureFactory new gram).
+	
+	
+	oneKilogramConvertedToGrams _ (oneKilogram convertTo: (MeasureFactory new gram)).
+	
+	self assert: oneKilogramConvertedToGrams equals: oneThousandGrams.
+	self assert: oneKilogramConvertedToGrams unit equals: (MeasureFactory new gram).	! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 22:07:11'!
+test09ConvertingPesosToMetersRaisesAnError
+
+	| tenPesos |
+	
+	tenPesos _ Measure withAmount: 10 withUnit: (MeasureFactory new peso).
+	
+	self should: [ (tenPesos convertTo: (MeasureFactory new meter)) ] raise: Error description: LabeledUnit incompatibleUnitsErrorDescription.! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 22:17:37'!
+test10ComparingNonZeroAmountsOfPesosAndDollars
+
+	| tenPesos tenDollars |
+	
+	tenPesos _ Measure withAmount: 10 withUnit: (MeasureFactory new peso).
+	tenDollars _ Measure withAmount: 10 withUnit: (MeasureFactory new dollar).
+	
+	self deny: tenPesos = tenDollars.! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 22:18:34'!
+test11ComparingZeroPesosToZeroDollars
+
+	| zeroPesos zeroDollars |
+	
+	zeroPesos _ Measure withAmount: 0 withUnit: (MeasureFactory new peso).
+	zeroDollars _ Measure withAmount: 0 withUnit: (MeasureFactory new dollar).
+	
+	self assert: zeroPesos = zeroDollars.! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 22:20:07'!
+test12ComparingZeroKelvinsToZeroKilograms
+
+	| zeroKelvins zeroKilograms |
+	
+	zeroKelvins _ Measure withAmount: 0 withUnit: (MeasureFactory new peso).
+	zeroKilograms _ Measure withAmount: 0 withUnit: (MeasureFactory new kilogram).
+	
+	self assert: zeroKelvins = zeroKilograms.! !
+
+!TestMeasures methodsFor: 'Testing' stamp: 'JG 6/5/2017 22:23:04'!
+test13ComparingZeroTemperatures
+
+	| zeroKelvins zeroCelsius zeroFahrenheits|
+	
+	zeroKelvins _ Measure withAmount: 0 withUnit: (MeasureFactory new kelvin).
+	zeroCelsius _ Measure withAmount: 0 withUnit: (MeasureFactory new celsius).
+	zeroFahrenheits _ Measure withAmount: 0 withUnit: (MeasureFactory new fahrenheit).
+	
+	self deny: zeroKelvins = zeroCelsius.
+	self deny: zeroKelvins = zeroFahrenheits.
+	self deny: zeroCelsius = zeroFahrenheits.! !
+
+
+!TestMeasures methodsFor: 'Testing temperatures' stamp: 'JG 6/5/2017 20:12:53'!
+testTemp01AllCelsiusAreTheSame
 
 	| unCelsius otroCelsius |
 	
@@ -409,8 +598,8 @@ test01AllCelsiusAreTheSame
 	
 	self assert: unCelsius = otroCelsius.! !
 
-!TestTemperature methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 15:38:50'!
-test02AllFahrenheitsAreTheSame
+!TestMeasures methodsFor: 'Testing temperatures' stamp: 'JG 6/5/2017 20:13:05'!
+testTemp02AllFahrenheitsAreTheSame
 
 	| unFahrenheit otroFahrenheit |
 	
@@ -419,8 +608,8 @@ test02AllFahrenheitsAreTheSame
 	
 	self assert: unFahrenheit = otroFahrenheit.! !
 
-!TestTemperature methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 15:45:17'!
-test03AllKelvinsAreTheSame
+!TestMeasures methodsFor: 'Testing temperatures' stamp: 'JG 6/5/2017 20:13:14'!
+testTemp03AllKelvinsAreTheSame
 
 	| unKelvin otroKelvin |
 	
@@ -429,20 +618,33 @@ test03AllKelvinsAreTheSame
 	
 	self assert: unKelvin = otroKelvin.! !
 
-!TestTemperature methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 16:10:20'!
-test04oneKelvinEquals274Celsius
+!TestMeasures methodsFor: 'Testing temperatures' stamp: 'JG 6/5/2017 20:13:24'!
+testTemp04AllKelvinsAreTheSame
 
-	| unKelvin twoHundredSeventyFourCelsius |
+	| unKelvin otroKelvin |
 	
 	unKelvin _ MeasureFactory new oneKelvin.
-	twoHundredSeventyFourCelsius _ (MeasureFactory new oneCelsius) * 274.
+	otroKelvin _ MeasureFactory new oneKelvin.
 	
-	self assert: unKelvin = twoHundredSeventyFourCelsius.! !
+	self assert: unKelvin = otroKelvin.! !
+
+
+!TestMeasures methodsFor: 'Testing compounds' stamp: 'JG 6/6/2017 00:58:20'!
+test01ASpeedMultipliedByATimeGivesADistance
+
+	| tenMetersPerSecond oneSecond tenMeters |
+	
+	tenMetersPerSecond _ MeasureFactory new tenMetersPerSecond.
+	oneSecond _ Measure withAmount: 1 withUnit: MeasureFactory new second.
+	tenMeters _ Measure withAmount: 10 withUnit: MeasureFactory new meter.
+	
+	
+	self assert: tenMetersPerSecond * oneSecond equals: tenMeters.! !
 
 
 !classDefinition: #LabeledUnit category: #'Measure-Solution'!
 Object subclass: #LabeledUnit
-	instanceVariableNames: 'unitMultiplier amountToUnitCorrection label'
+	instanceVariableNames: 'unitMultiplier amountToUnitCorrection label type'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
@@ -458,24 +660,46 @@ amountToUnitCorrection
 
 	^ amountToUnitCorrection! !
 
-!LabeledUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 16:07:12'!
-initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel
+!LabeledUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 20:51:33'!
+initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel withType: aUnitType
 
 	unitMultiplier _ aUnitMultiplier.
 	amountToUnitCorrection _ anAmountToUnitCorrection.
 	label _ aLabel.
+	type _ aUnitType.
 		
 	^ self! !
+
+!LabeledUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:52:23'!
+isCompatibleWith: anotherUnit
+
+	^ self isOfTheSameTypeAs: anotherUnit! !
+
+!LabeledUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:04:05'!
+isOfTheSameTypeAs: anotherUnit
+
+	^ type = anotherUnit type! !
 
 !LabeledUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 14:54:10'!
 printString
 
 	^ label! !
 
+!LabeledUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:04:14'!
+type
+
+	^  type! !
+
 !LabeledUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 15:22:41'!
 unitMultiplier
 
 	^ unitMultiplier! !
+
+
+!LabeledUnit methodsFor: 'accessing' stamp: 'JG 6/6/2017 00:59:21'!
+label
+
+	^ label! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -483,18 +707,72 @@ unitMultiplier
 LabeledUnit class
 	instanceVariableNames: ''!
 
-!LabeledUnit class methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 16:09:40'!
-withUnitMultiplier: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel
+!LabeledUnit class methodsFor: 'error description' stamp: 'JG 6/5/2017 22:05:41'!
+incompatibleUnitsErrorDescription
+
+	^ 'The units are not compatible'! !
 
 
-	^ self new initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel.	! !
+!LabeledUnit class methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 20:51:06'!
+withUnitMultiplier: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel ofType: aUnitType 
 
-!LabeledUnit class methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 16:03:51'!
-withUnitMultiplier: aUnitMultiplier withLabel: aLabel
 
-	^ self new initializeWith: aUnitMultiplier withAmountToUnitCorrection: 0 withLabel: aLabel.
+	^ self new initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel withType: aUnitType.	! !
+
+!LabeledUnit class methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 20:55:02'!
+withUnitMultiplier: aUnitMultiplier withLabel: aLabel ofType: aUnitType
+
+	^ self new initializeWith: aUnitMultiplier withAmountToUnitCorrection: 0 withLabel: aLabel withType: aUnitType.
 	
 ! !
+
+
+!classDefinition: #CompoundUnit category: #'Measure-Solution'!
+LabeledUnit subclass: #CompoundUnit
+	instanceVariableNames: 'firstUnit secondUnit connection'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'Measure-Solution'!
+
+!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/6/2017 00:51:10'!
+initializeWith: aUnit and: anotherUnit withConnection: aSelector withType: aUnitType
+
+	firstUnit _ aUnit.
+	secondUnit _ anotherUnit.
+	connection _ aSelector.
+	unitMultiplier _ aUnit unitMultiplier perform: aSelector with: anotherUnit unitMultiplier.
+	label _ aUnit label , ' ' , anotherUnit label.
+	amountToUnitCorrection _ 0.
+	type _ aUnitType.
+	
+	^ self
+	
+	! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+!classDefinition: 'CompoundUnit class' category: #'Measure-Solution'!
+CompoundUnit class
+	instanceVariableNames: ''!
+
+!CompoundUnit class methodsFor: 'as yet unclassified' stamp: 'JG 6/6/2017 00:43:14'!
+with: aUnit and: anotherUnit withConnection: aSelector ofType: aUnitType
+
+	^ self new initializeWith: aUnit and: anotherUnit withConnection: aSelector withType: aUnitType
+
+	! !
+
+!CompoundUnit class methodsFor: 'as yet unclassified' stamp: 'JG 6/6/2017 00:44:53'!
+with: aUnit per: anotherUnit ofType: aUnitType
+
+	^ self with: aUnit and: anotherUnit withConnection: #/ ofType: aUnitType! !
+
+!CompoundUnit class methodsFor: 'as yet unclassified' stamp: 'JG 6/6/2017 00:50:49'!
+with: aUnit times: anotherUnit ofType: aUnitType
+
+	^ self with: aUnit and: anotherUnit withConnection: #* ofType: aUnitType 
+
+	! !
 
 
 !classDefinition: #MeasureFactory category: #'Measure-Solution'!
@@ -504,40 +782,40 @@ Object subclass: #MeasureFactory
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:23:40'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:05:30'!
 centimeter
 
-	^ LabeledUnit withUnitMultiplier: 1/100 withLabel: 'centimeter'! !
+	^ LabeledUnit withUnitMultiplier: 1/100 withLabel: 'centimeter' ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:26:47'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:05:40'!
 decameter
 
-	^ LabeledUnit withUnitMultiplier: 10 withLabel: 'decameter'! !
+	^ LabeledUnit withUnitMultiplier: 10 withLabel: 'decameter'  ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:27:17'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:05:44'!
 decimeter
 
-	^ LabeledUnit withUnitMultiplier: 1/10 withLabel: 'decimeter'! !
+	^ LabeledUnit withUnitMultiplier: 1/10 withLabel: 'decimeter' ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:27:29'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:06:20'!
 hectometer
 
-	^ LabeledUnit withUnitMultiplier: 100 withLabel: 'hectometer'! !
+	^ LabeledUnit withUnitMultiplier: 100 withLabel: 'hectometer' ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:27:39'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:06:37'!
 kilometer
 	
-	^ LabeledUnit withUnitMultiplier: 1000 withLabel: 'kilometer'! !
+	^ LabeledUnit withUnitMultiplier: 1000 withLabel: 'kilometer' ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:27:50'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:06:47'!
 meter
 	
-	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'meter'! !
+	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'meter' ofType: 'distance'! !
 
-!MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 15:28:10'!
+!MeasureFactory methodsFor: 'Distance Units' stamp: 'JG 6/5/2017 21:06:49'!
 milimeter
 
-	^ LabeledUnit withUnitMultiplier: 1/1000 withLabel: 'milimeter'! !
+	^ LabeledUnit withUnitMultiplier: 1/1000 withLabel: 'milimeter' ofType: 'distance'! !
 
 !MeasureFactory methodsFor: 'Distance Units' stamp: 'AM 6/5/2017 14:00:11'!
 millimeter
@@ -609,17 +887,86 @@ oneKelvin
 	^ Measure withAmount: 1 withUnit: (self kelvin)! !
 
 
-!MeasureFactory methodsFor: 'Temperature Units' stamp: 'AM 6/5/2017 16:10:59'!
+!MeasureFactory methodsFor: 'Temperature Units' stamp: 'JG 6/5/2017 20:55:48'!
 celsius
 
-	^ LabeledUnit withUnitMultiplier: 1 withAmountToUnitCorrection: -273 withLabel: 'celsius'! !
+	^ LabeledUnit withUnitMultiplier: 1 withAmountToUnitCorrection: -273 withLabel: 'celsius' ofType: 'temperature'! !
 
-!MeasureFactory methodsFor: 'Temperature Units' stamp: 'AM 6/5/2017 16:11:51'!
+!MeasureFactory methodsFor: 'Temperature Units' stamp: 'JG 6/5/2017 20:56:00'!
 fahrenheit
 
-	^ LabeledUnit withUnitMultiplier: 5/9 withAmountToUnitCorrection: -460 withLabel: 'fahrenheit'! !
+	^ LabeledUnit withUnitMultiplier: 5/9 withAmountToUnitCorrection: -460 withLabel: 'fahrenheit' ofType: 'temperature'! !
 
-!MeasureFactory methodsFor: 'Temperature Units' stamp: 'AM 6/5/2017 15:45:49'!
+!MeasureFactory methodsFor: 'Temperature Units' stamp: 'JG 6/5/2017 21:06:29'!
 kelvin
 
-	^ LabeledUnit withUnitMultiplier: 1  withLabel: 'kelvin'! !
+	^ LabeledUnit withUnitMultiplier: 1  withLabel: 'kelvin' ofType: 'temperature'! !
+
+
+!MeasureFactory methodsFor: 'Weight Measures' stamp: 'JG 6/5/2017 20:07:17'!
+oneKilogram
+
+	^ Measure withAmount: 1 withUnit: self kilogram! !
+
+
+!MeasureFactory methodsFor: 'Weight Units' stamp: 'JG 6/5/2017 21:06:09'!
+gram
+
+	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'gram' ofType: 'weight'! !
+
+!MeasureFactory methodsFor: 'Weight Units' stamp: 'JG 6/5/2017 21:06:34'!
+kilogram
+
+	^ LabeledUnit withUnitMultiplier: 1000 withLabel: 'kilogram' ofType: 'weight'! !
+
+
+!MeasureFactory methodsFor: 'Currency Units' stamp: 'JG 6/5/2017 21:05:02'!
+centavo
+	
+	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'centavo' ofType: 'argentinian currency'! !
+
+!MeasureFactory methodsFor: 'Currency Units' stamp: 'JG 6/5/2017 21:06:00'!
+dollar
+	
+	^ LabeledUnit withUnitMultiplier: 100 withLabel: 'dollar' ofType: 'american currency'! !
+
+!MeasureFactory methodsFor: 'Currency Units' stamp: 'JG 6/5/2017 21:06:56'!
+peso
+	
+	^ LabeledUnit withUnitMultiplier: 100 withLabel: 'peso' ofType: 'argentinian currency'! !
+
+
+!MeasureFactory methodsFor: 'Volume Units' stamp: 'JG 6/5/2017 21:06:44'!
+liter
+
+	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'liter' ofType: 'volume'! !
+
+
+!MeasureFactory methodsFor: 'Speed Units' stamp: 'JG 6/6/2017 00:45:34'!
+metersPerSecond
+
+	^ CompoundUnit with: self meter per: self second ofType: 'speed'! !
+
+
+!MeasureFactory methodsFor: 'Area Units' stamp: 'JG 6/5/2017 22:55:14'!
+squaredMeter
+
+	^ CompoundUnit with: self meter times: self meter! !
+
+
+!MeasureFactory methodsFor: 'Acceleration Units' stamp: 'JG 6/6/2017 00:50:27'!
+metersPerSquaredSecond
+
+	^ CompoundUnit with: self meter per: (CompoundUnit with: self second times: self second ofType: 'squaredTime') ofType: 'acceleration'! !
+
+
+!MeasureFactory methodsFor: 'Speed Measures' stamp: 'JG 6/6/2017 00:56:04'!
+tenMetersPerSecond
+
+	^ Measure withAmount: 10 withUnit: self metersPerSecond ! !
+
+
+!MeasureFactory methodsFor: 'Time Units' stamp: 'JG 6/6/2017 00:56:47'!
+second
+
+	^ LabeledUnit withUnitMultiplier: 1 withLabel: 'second' ofType: 'time'! !
