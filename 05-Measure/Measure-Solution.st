@@ -1,3 +1,4 @@
+
 !classDefinition: #Measure category: #'Measure-Solution'!
 Magnitude subclass: #Measure
 	instanceVariableNames: 'amount unit'
@@ -52,7 +53,7 @@ timesAmount: anAmount
 !Measure methodsFor: 'arithmetic' stamp: 'JG 6/6/2017 01:15:22'!
 timesMeasure: aMeasure
 
-	^ Measure withAmount: amount * aMeasure amount withUnit: (CompoundUnit with: unit and: aMeasure unit withConnection: #* ofType: (unit type , ' times ' , aMeasure unitType)! !
+	^ Measure withAmount: amount * aMeasure amount withUnit: (CompoundUnit with: unit and: aMeasure unit withConnection: #* ofType: (unit type , ' times ' , aMeasure unitType))! !
 
 
 !Measure methodsFor: 'comparing' stamp: 'AM 6/5/2017 15:54:44'!
