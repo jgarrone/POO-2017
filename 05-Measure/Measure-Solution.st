@@ -11,10 +11,10 @@ Magnitude subclass: #Measure
 		ifTrue: [ self timesMeasure: anAmountOrAMeasure ]
 		ifFalse: [ self timesAmount: anAmountOrAMeasure ]! !
 
-!Measure methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 11:23:15'!
+!Measure methodsFor: 'arithmetic' stamp: 'AM 6/8/2017 16:58:46'!
 + aMeasure 
 	
-	^ (unit isOfTheSameTypeAs: aMeasure unit) 
+	^ (unit isCompatibleWith: aMeasure unit) 
 		ifTrue: [ Measure withAmount: ((self absoluteAmount + aMeasure absoluteAmount) / unit unitMultiplier) withUnit: unit ]
 		ifFalse: [ (CompoundMeasure with: self) + aMeasure ]! !
 
@@ -733,43 +733,6 @@ Object subclass: #CompoundMeasure
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:29:04'!
-add: anotherMeasure
-
-	| firstCompatibleMeasure newValueForCompatibleMeasure newCompoundMeasure allMeasuresButFirstCompatibleMeasure |
-	
-	firstCompatibleMeasure _ measures 
-		detect: [ :aMeasure | aMeasure isCompatibleWith: anotherMeasure ] 
-		ifNone: [ ^ (CompoundMeasure with: anotherMeasure) addAll: measures].
-	
-	newCompoundMeasure _ CompoundMeasure new.
-	
-	newValueForCompatibleMeasure _ firstCompatibleMeasure + anotherMeasure.
-	newValueForCompatibleMeasure absoluteAmount isZero 
-		ifFalse: [ newCompoundMeasure _ CompoundMeasure with: (firstCompatibleMeasure + anotherMeasure) ].
-	
-	allMeasuresButFirstCompatibleMeasure _ measures.
-	allMeasuresButFirstCompatibleMeasure remove: firstCompatibleMeasure.
-	
-	newCompoundMeasure addAll: allMeasuresButFirstCompatibleMeasure.
-	
-	^ newCompoundMeasure 
-	
-	! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 19:53:17'!
-addAll: aCollectionOfMeasures
-
-	measures addAll: aCollectionOfMeasures.
-	
-	^ self! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:43:02'!
-includes: aMeasure
-
-	^ measures includes: aMeasure! !
-
-
 !CompoundMeasure methodsFor: 'arithmetic' stamp: 'AM 6/6/2017 20:41:11'!
 * anInteger
 
@@ -827,6 +790,44 @@ initializeWith: aCollectionOfMeasures
 	
 	^ self! !
 
+
+!CompoundMeasure methodsFor: 'evaluating' stamp: 'JG 6/7/2017 11:43:02'!
+includes: aMeasure
+
+	^ measures includes: aMeasure! !
+
+
+!CompoundMeasure methodsFor: 'adding' stamp: 'JG 6/7/2017 11:29:04'!
+add: anotherMeasure
+
+	| firstCompatibleMeasure newValueForCompatibleMeasure newCompoundMeasure allMeasuresButFirstCompatibleMeasure |
+	
+	firstCompatibleMeasure _ measures 
+		detect: [ :aMeasure | aMeasure isCompatibleWith: anotherMeasure ] 
+		ifNone: [ ^ (CompoundMeasure with: anotherMeasure) addAll: measures].
+	
+	newCompoundMeasure _ CompoundMeasure new.
+	
+	newValueForCompatibleMeasure _ firstCompatibleMeasure + anotherMeasure.
+	newValueForCompatibleMeasure absoluteAmount isZero 
+		ifFalse: [ newCompoundMeasure _ CompoundMeasure with: (firstCompatibleMeasure + anotherMeasure) ].
+	
+	allMeasuresButFirstCompatibleMeasure _ measures.
+	allMeasuresButFirstCompatibleMeasure remove: firstCompatibleMeasure.
+	
+	newCompoundMeasure addAll: allMeasuresButFirstCompatibleMeasure.
+	
+	^ newCompoundMeasure 
+	
+	! !
+
+!CompoundMeasure methodsFor: 'adding' stamp: 'AM 6/6/2017 19:53:17'!
+addAll: aCollectionOfMeasures
+
+	measures addAll: aCollectionOfMeasures.
+	
+	^ self! !
+
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
 !classDefinition: 'CompoundMeasure class' category: #'Measure-Solution'!
@@ -851,7 +852,7 @@ Object subclass: #CompoundUnit
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 13:02:28'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 13:02:28'!
 * anotherUnit
 
 	| newUnit |
@@ -861,64 +862,12 @@ Object subclass: #CompoundUnit
 	
 	^ newUnit! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:40:14'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 12:40:14'!
 / anotherUnit
 
 	^ self * anotherUnit reversed! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:39:00'!
-add: aUnit withDegree: aDegree
-
-	units at: aUnit put: aDegree.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 15:45:06'!
-amountToUnitCorrection
-
-	^ 0! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 15:35:17'!
-degreeOf: aUnit
-
-	^ units at: aUnit ifAbsent: [0].
-! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:42:40'!
-initialize
-
-	units _ Dictionary new.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:53:22'!
-initializeWith: aCollectionOfUnits
-
-	units _ aCollectionOfUnits.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 15:40:29'!
-isCompatibleWith: anotherUnit
-
-	^units = anotherUnit units
-
-"
-	| anotherUnitAsocs |
-	
-	anotherUnitAsocs _ anotherUnit units. 
-
-	anotherUnitAsocs associationsDo: [:anAsoc | (anAsoc value = (self degreeOf: anAsoc key)) ifFalse: [^false]].
-	
-	^true
-"! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 16:29:00'!
-isOfTheSameTypeAs: anotherUnit
-
-	^self isCompatibleWith: anotherUnit! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 13:04:05'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 13:04:05'!
 multiplyBy: anotherCompoundUnit
 
 	| newUnit |
@@ -930,7 +879,7 @@ multiplyBy: anotherCompoundUnit
 	^ newUnit
 ! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 16:12:33'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 16:12:33'!
 multiplyByUnit: anotherUnit withDegree: aDegree
 
 	units detect: [ :aUnit | aUnit = anotherUnit ]
@@ -940,7 +889,70 @@ multiplyByUnit: anotherUnit withDegree: aDegree
 	
 	^ self! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:50:41'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 12:55:55'!
+timesUnit: anotherUnit
+
+	| newUnit |
+	
+	newUnit _ CompoundUnit withAll: units.
+	anotherUnit units do: [ :aUnit | newUnit _ newUnit multiplyBy: aUnit ].
+	
+	^ newUnit! !
+
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:45:06'!
+amountToUnitCorrection
+
+	^ 0! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:35:17'!
+degreeOf: aUnit
+
+	^ units at: aUnit ifAbsent: [0].
+! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:45:51'!
+unitMultiplier
+
+	^1! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'JG 6/7/2017 12:00:55'!
+units
+
+	^ units! !
+
+
+!CompoundUnit methodsFor: 'initialization' stamp: 'JG 6/7/2017 12:42:40'!
+initialize
+
+	units _ Dictionary new.
+	
+	^ self! !
+
+!CompoundUnit methodsFor: 'initialization' stamp: 'JG 6/7/2017 12:53:22'!
+initializeWith: aCollectionOfUnits
+
+	units _ aCollectionOfUnits.
+	
+	^ self! !
+
+
+!CompoundUnit methodsFor: 'comparing' stamp: 'AM 6/8/2017 16:51:13'!
+isCompatibleWith: anotherUnit
+
+	^units = anotherUnit units
+! !
+
+
+!CompoundUnit methodsFor: 'adding' stamp: 'JG 6/7/2017 12:39:00'!
+add: aUnit withDegree: aDegree
+
+	units at: aUnit put: aDegree.
+	
+	^ self! !
+
+
+!CompoundUnit methodsFor: 'converting' stamp: 'JG 6/7/2017 12:50:41'!
 reversed
 	
 	| newCompoundUnit |
@@ -951,26 +963,6 @@ reversed
 	^ newCompoundUnit 
 	
 	! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:55:55'!
-timesUnit: anotherUnit
-
-	| newUnit |
-	
-	newUnit _ CompoundUnit withAll: units.
-	anotherUnit units do: [ :aUnit | newUnit _ newUnit multiplyBy: aUnit ].
-	
-	^ newUnit! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 15:45:51'!
-unitMultiplier
-
-	^1! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:00:55'!
-units
-
-	^ units! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -1204,52 +1196,16 @@ Object subclass: #Unit
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 14:33:30'!
-degreeOf: aUnit
-	
-	^ (aUnit = self)
-		ifTrue: [ 1 ]! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 20:51:33'!
-initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel withType: aUnitType
-
-	unitMultiplier _ aUnitMultiplier.
-	amountToUnitCorrection _ anAmountToUnitCorrection.
-	label _ aLabel.
-	type _ aUnitType.
-		
-	^ self! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 16:30:33'!
-isCompatibleWith: anotherUnit
-	^ self isOfTheSameTypeAs: anotherUnit
-				! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/7/2017 16:00:37'!
-isOfTheSameTypeAs: anotherUnit
-
-	^ type = anotherUnit type! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 14:54:10'!
-printString
-
-	^ label! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:48:56'!
-reversed
-
-	^ CompoundUnit new add: self withDegree: -1! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:54:11'!
-units
-
-	^ (CompoundUnit new add: self withDegree: 1) units! !
-
-
 !Unit methodsFor: 'accessing' stamp: 'AM 6/5/2017 16:04:50'!
 amountToUnitCorrection
 
 	^ amountToUnitCorrection! !
+
+!Unit methodsFor: 'accessing' stamp: 'AM 6/7/2017 14:33:30'!
+degreeOf: aUnit
+	
+	^ (aUnit = self)
+		ifTrue: [ 1 ]! !
 
 !Unit methodsFor: 'accessing' stamp: 'JG 6/6/2017 00:59:21'!
 label
@@ -1260,6 +1216,11 @@ label
 unitMultiplier
 
 	^ unitMultiplier! !
+
+!Unit methodsFor: 'accessing' stamp: 'JG 6/7/2017 12:54:11'!
+units
+
+	^ (CompoundUnit new add: self withDegree: 1) units! !
 
 
 !Unit methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 16:06:03'!
@@ -1290,6 +1251,33 @@ type
 hash 
 
 	^ type hash! !
+
+!Unit methodsFor: 'comparing' stamp: 'AM 6/8/2017 16:59:44'!
+isCompatibleWith: anotherUnit
+	^ type = anotherUnit type				! !
+
+
+!Unit methodsFor: 'initialization' stamp: 'JG 6/5/2017 20:51:33'!
+initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel withType: aUnitType
+
+	unitMultiplier _ aUnitMultiplier.
+	amountToUnitCorrection _ anAmountToUnitCorrection.
+	label _ aLabel.
+	type _ aUnitType.
+		
+	^ self! !
+
+
+!Unit methodsFor: 'printing' stamp: 'AM 6/5/2017 14:54:10'!
+printString
+
+	^ label! !
+
+
+!Unit methodsFor: 'converting' stamp: 'JG 6/7/2017 12:48:56'!
+reversed
+
+	^ CompoundUnit new add: self withDegree: -1! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
