@@ -11,10 +11,10 @@ Magnitude subclass: #Measure
 		ifTrue: [ self timesMeasure: anAmountOrAMeasure ]
 		ifFalse: [ self timesAmount: anAmountOrAMeasure ]! !
 
-!Measure methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 11:23:15'!
+!Measure methodsFor: 'arithmetic' stamp: 'AM 6/8/2017 16:58:46'!
 + aMeasure 
 	
-	^ (unit isOfTheSameTypeAs: aMeasure unit) 
+	^ (unit isCompatibleWith: aMeasure unit) 
 		ifTrue: [ Measure withAmount: ((self absoluteAmount + aMeasure absoluteAmount) / unit unitMultiplier) withUnit: unit ]
 		ifFalse: [ (CompoundMeasure with: self) + aMeasure ]! !
 
@@ -23,15 +23,24 @@ Magnitude subclass: #Measure
 	
 	^ self + (aDistance * -1)	! !
 
-!Measure methodsFor: 'arithmetic' stamp: 'AM 6/5/2017 14:57:15'!
-/ anAmount
+!Measure methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 14:56:50'!
+/ anAmountOrAMeasure
 
-	^ Measure withAmount: amount / anAmount withUnit: unit! !
+	^ (anAmountOrAMeasure isKindOf: self class) 
+		ifTrue: [ self perMeasure: anAmountOrAMeasure ]
+		ifFalse: [ Measure withAmount: amount / anAmountOrAMeasure withUnit: unit ]
+	
+	! !
 
 !Measure methodsFor: 'arithmetic' stamp: 'JG 6/4/2017 18:20:41'!
 negated
 
 	^ self * -1	! !
+
+!Measure methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 14:55:28'!
+perMeasure: aMeasure
+
+	^ Measure withAmount: amount / aMeasure amount withUnit: (unit / aMeasure unit)! !
 
 !Measure methodsFor: 'arithmetic' stamp: 'JG 6/4/2017 23:20:50'!
 printString
@@ -107,7 +116,7 @@ absoluteAmount
 
 	^ (amount + self amountToUnitCorrection) * self unitMultiplier! !
 
-!Measure methodsFor: 'accessing' stamp: 'JG 5/23/2017 19:58:06'!
+!Measure methodsFor: 'accessing' stamp: 'AM 6/7/2017 14:34:42'!
 amount
 
 	^ amount! !
@@ -115,6 +124,16 @@ amount
 !Measure methodsFor: 'accessing' stamp: 'AM 6/5/2017 16:01:04'!
 amountToUnitCorrection
 	^ unit amountToUnitCorrection! !
+
+!Measure methodsFor: 'accessing' stamp: 'AM 6/7/2017 14:34:47'!
+isZero 
+
+	^ amount = 0! !
+
+!Measure methodsFor: 'accessing' stamp: 'AM 6/6/2017 20:01:30'!
+measures
+
+	^ (CompoundMeasure with: self) measures! !
 
 !Measure methodsFor: 'accessing' stamp: 'JG 6/4/2017 19:36:29'!
 unit
@@ -139,12 +158,6 @@ initializeWithAmount: anAmount withUnit: aUnit
 	unit _ aUnit.
 	
 	^ self! !
-
-
-!Measure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 20:01:30'!
-measures
-
-	^ (CompoundMeasure with: self) measures! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -194,6 +207,16 @@ setFrom: startDistance to: stopDistance by: stepDistance
 	^ self! !
 
 
+!DistanceInterval methodsFor: 'accessing' stamp: 'JG 6/4/2017 23:25:21'!
+by
+
+	^ step! !
+
+!DistanceInterval methodsFor: 'accessing' stamp: 'JG 6/4/2017 23:24:41'!
+from
+
+	^ start! !
+
 !DistanceInterval methodsFor: 'accessing' stamp: 'JG 5/27/2017 21:52:34'!
 start
 
@@ -209,18 +232,7 @@ stop
 
 	^ stop! !
 
-
-!DistanceInterval methodsFor: 'as yet unclassified' stamp: 'JG 6/4/2017 23:25:21'!
-by
-
-	^ step! !
-
-!DistanceInterval methodsFor: 'as yet unclassified' stamp: 'JG 6/4/2017 23:24:41'!
-from
-
-	^ start! !
-
-!DistanceInterval methodsFor: 'as yet unclassified' stamp: 'JG 6/4/2017 23:25:08'!
+!DistanceInterval methodsFor: 'accessing' stamp: 'JG 6/4/2017 23:25:08'!
 to
 
 	^ stop! !
@@ -590,6 +602,21 @@ test13ComparingZeroTemperatures
 	self deny: zeroKelvins = zeroFahrenheits.
 	self deny: zeroCelsius = zeroFahrenheits.! !
 
+!TestMeasures methodsFor: 'Testing' stamp: 'AM 6/7/2017 15:58:24'!
+test14aSpeedAcceleratedDuringSometimeIsADifferentSpeed
+
+	|anInitialSpeed aFinalEstimatedSpeed anAcceleration aTime|
+	
+	anInitialSpeed _ MeasureFactory new tenMetersPerSecond.
+	anAcceleration _ MeasureFactory new tenMetersPerSquaredSecond.
+	aTime _ MeasureFactory new oneSecond.
+	
+	aFinalEstimatedSpeed _ MeasureFactory new tenMetersPerSecond *2.
+	
+	self assert: aFinalEstimatedSpeed = (MeasureFactory new finalSpeedStartingAt: anInitialSpeed 
+																			accelerating: anAcceleration 
+																			during: aTime).! !
+
 
 !TestMeasures methodsFor: 'Testing temperatures' stamp: 'JG 6/5/2017 20:12:53'!
 testTemp01AllCelsiusAreTheSame
@@ -622,16 +649,31 @@ testTemp03AllKelvinsAreTheSame
 	self assert: unKelvin = otroKelvin.! !
 
 
-!TestMeasures methodsFor: 'Testing CompoundUnits' stamp: 'JG 6/7/2017 11:47:19'!
+!TestMeasures methodsFor: 'Testing CompoundUnits' stamp: 'AM 6/7/2017 14:50:27'!
 test01ADistanceDividedByATimeGivesASpeed
 
-	|  oneSecond tenMeters tenMetersPerSecond |
+	|  oneSecond tenMeters tenMetersPerSecond newMeasure |
 	
 	oneSecond _ Measure withAmount: 1 withUnit: MeasureFactory new second.
 	tenMeters _ Measure withAmount: 10 withUnit: MeasureFactory new meter.
 	tenMetersPerSecond _ MeasureFactory new tenMetersPerSecond.
 	
-	self assert: tenMeters / oneSecond equals: tenMetersPerSecond.! !
+	newMeasure _ tenMeters / oneSecond.
+	
+	self assert: newMeasure equals: tenMetersPerSecond.! !
+
+!TestMeasures methodsFor: 'Testing CompoundUnits' stamp: 'AM 6/7/2017 15:47:20'!
+test02ASpeedMultipliedByATimeGivesADistance
+
+	|  oneSecond tenMeters tenMetersPerSecond newMeasure |
+	
+	oneSecond _ Measure withAmount: 1 withUnit: MeasureFactory new second.
+	tenMeters _ Measure withAmount: 10 withUnit: MeasureFactory new meter.
+	tenMetersPerSecond _ MeasureFactory new tenMetersPerSecond.
+	
+	newMeasure _ tenMetersPerSecond * oneSecond.
+	
+	self assert: newMeasure equals: tenMeters.! !
 
 
 !TestMeasures methodsFor: 'Testing CompoundMeasures' stamp: 'JG 6/7/2017 11:40:35'!
@@ -691,7 +733,7 @@ Object subclass: #CompoundMeasure
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 20:41:11'!
+!CompoundMeasure methodsFor: 'arithmetic' stamp: 'AM 6/6/2017 20:41:11'!
 * anInteger
 
 	| newMeasure |
@@ -701,7 +743,7 @@ Object subclass: #CompoundMeasure
 		
 	^ newMeasure! !
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:24:22'!
+!CompoundMeasure methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 11:24:22'!
 + anotherMeasure
 
 	| newMeasure |
@@ -711,7 +753,7 @@ Object subclass: #CompoundMeasure
 	
 	^ newMeasure! !
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:20:53'!
+!CompoundMeasure methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 11:20:53'!
 - anotherMeasure
 
 	| newMeasure |
@@ -720,13 +762,42 @@ Object subclass: #CompoundMeasure
 		
 	^ newMeasure! !
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 20:07:45'!
+
+!CompoundMeasure methodsFor: 'comparing' stamp: 'AM 6/6/2017 20:07:45'!
 = anotherMeasure
 
 	^ measures = anotherMeasure measures
 ! !
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:29:04'!
+
+!CompoundMeasure methodsFor: 'accessing' stamp: 'AM 6/6/2017 19:47:21'!
+measures
+
+	^ measures! !
+
+
+!CompoundMeasure methodsFor: 'initialization' stamp: 'AM 6/6/2017 20:41:32'!
+initialize
+
+	measures _ Bag new.
+	
+	^ self! !
+
+!CompoundMeasure methodsFor: 'initialization' stamp: 'AM 6/6/2017 19:56:35'!
+initializeWith: aCollectionOfMeasures
+
+	measures _ aCollectionOfMeasures.
+	
+	^ self! !
+
+
+!CompoundMeasure methodsFor: 'evaluating' stamp: 'JG 6/7/2017 11:43:02'!
+includes: aMeasure
+
+	^ measures includes: aMeasure! !
+
+
+!CompoundMeasure methodsFor: 'adding' stamp: 'JG 6/7/2017 11:29:04'!
 add: anotherMeasure
 
 	| firstCompatibleMeasure newValueForCompatibleMeasure newCompoundMeasure allMeasuresButFirstCompatibleMeasure |
@@ -750,36 +821,12 @@ add: anotherMeasure
 	
 	! !
 
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 19:53:17'!
+!CompoundMeasure methodsFor: 'adding' stamp: 'AM 6/6/2017 19:53:17'!
 addAll: aCollectionOfMeasures
 
 	measures addAll: aCollectionOfMeasures.
 	
 	^ self! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 11:43:02'!
-includes: aMeasure
-
-	^ measures includes: aMeasure! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 20:41:32'!
-initialize
-
-	measures _ Bag new.
-	
-	^ self! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 19:56:35'!
-initializeWith: aCollectionOfMeasures
-
-	measures _ aCollectionOfMeasures.
-	
-	^ self! !
-
-!CompoundMeasure methodsFor: 'as yet unclassified' stamp: 'AM 6/6/2017 19:47:21'!
-measures
-
-	^ measures! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -800,12 +847,12 @@ withAll: aCollectionOfMeasures
 
 !classDefinition: #CompoundUnit category: #'Measure-Solution'!
 Object subclass: #CompoundUnit
-	instanceVariableNames: 'topUnits bottomUnits units'
+	instanceVariableNames: 'units'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 13:02:28'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 13:02:28'!
 * anotherUnit
 
 	| newUnit |
@@ -815,39 +862,12 @@ Object subclass: #CompoundUnit
 	
 	^ newUnit! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:40:14'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 12:40:14'!
 / anotherUnit
 
 	^ self * anotherUnit reversed! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:39:00'!
-add: aUnit withDegree: aDegree
-
-	units at: aUnit put: aDegree.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:39:22'!
-degreeOf: aUnit
-
-	^ units at: aUnit.
-! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:42:40'!
-initialize
-
-	units _ Dictionary new.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:53:22'!
-initializeWith: aCollectionOfUnits
-
-	units _ aCollectionOfUnits.
-	
-	^ self! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 13:04:05'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 13:04:05'!
 multiplyBy: anotherCompoundUnit
 
 	| newUnit |
@@ -859,17 +879,80 @@ multiplyBy: anotherCompoundUnit
 	^ newUnit
 ! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:38:23'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 16:12:33'!
 multiplyByUnit: anotherUnit withDegree: aDegree
 
 	units detect: [ :aUnit | aUnit = anotherUnit ]
 		ifFound: [ :compatibleUnit |  self remove: compatibleUnit.
 										self add: compatibleUnit withDegree: (self degreeOf: compatibleUnit) + aDegree. ]
-		ifNone: [ self add: anotherUnit withDegree: aDegree. ^ self ].
+		ifNone: [ self add: anotherUnit withDegree: aDegree ].
 	
 	^ self! !
 
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:50:41'!
+!CompoundUnit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 12:55:55'!
+timesUnit: anotherUnit
+
+	| newUnit |
+	
+	newUnit _ CompoundUnit withAll: units.
+	anotherUnit units do: [ :aUnit | newUnit _ newUnit multiplyBy: aUnit ].
+	
+	^ newUnit! !
+
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:45:06'!
+amountToUnitCorrection
+
+	^ 0! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:35:17'!
+degreeOf: aUnit
+
+	^ units at: aUnit ifAbsent: [0].
+! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'AM 6/7/2017 15:45:51'!
+unitMultiplier
+
+	^1! !
+
+!CompoundUnit methodsFor: 'accessing' stamp: 'JG 6/7/2017 12:00:55'!
+units
+
+	^ units! !
+
+
+!CompoundUnit methodsFor: 'initialization' stamp: 'JG 6/7/2017 12:42:40'!
+initialize
+
+	units _ Dictionary new.
+	
+	^ self! !
+
+!CompoundUnit methodsFor: 'initialization' stamp: 'JG 6/7/2017 12:53:22'!
+initializeWith: aCollectionOfUnits
+
+	units _ aCollectionOfUnits.
+	
+	^ self! !
+
+
+!CompoundUnit methodsFor: 'comparing' stamp: 'AM 6/8/2017 16:51:13'!
+isCompatibleWith: anotherUnit
+
+	^units = anotherUnit units
+! !
+
+
+!CompoundUnit methodsFor: 'adding' stamp: 'JG 6/7/2017 12:39:00'!
+add: aUnit withDegree: aDegree
+
+	units at: aUnit put: aDegree.
+	
+	^ self! !
+
+
+!CompoundUnit methodsFor: 'converting' stamp: 'JG 6/7/2017 12:50:41'!
 reversed
 	
 	| newCompoundUnit |
@@ -880,21 +963,6 @@ reversed
 	^ newCompoundUnit 
 	
 	! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:55:55'!
-timesUnit: anotherUnit
-
-	| newUnit |
-	
-	newUnit _ CompoundUnit withAll: units.
-	anotherUnit units do: [ :aUnit | newUnit _ newUnit multiplyBy: aUnit ].
-	
-	^ newUnit! !
-
-!CompoundUnit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:00:55'!
-units
-
-	^ units! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -1092,6 +1160,11 @@ metersPerSquaredSecond
 
 	^ (CompoundUnit new) add: self meter withDegree: 1; add: self second withDegree: -2! !
 
+!MeasureFactory methodsFor: 'Acceleration Units' stamp: 'AM 6/7/2017 15:52:51'!
+tenMetersPerSquaredSecond
+
+	^ Measure withAmount: 10 withUnit: self metersPerSquaredSecond! !
+
 
 !MeasureFactory methodsFor: 'Speed Measures' stamp: 'JG 6/7/2017 12:57:25'!
 tenMetersPerSecond
@@ -1109,6 +1182,12 @@ second
 oneSecond
 	^ Measure withAmount: 1 withUnit: self second.! !
 
+
+!MeasureFactory methodsFor: 'random physics formulas' stamp: 'AM 6/7/2017 16:01:40'!
+finalSpeedStartingAt: startSpeed accelerating: anAcceleration during: aTime
+
+    ^ startSpeed + (anAcceleration * aTime) ! !
+
 
 !classDefinition: #Unit category: #'Measure-Solution'!
 Object subclass: #Unit
@@ -1117,30 +1196,68 @@ Object subclass: #Unit
 	poolDictionaries: ''
 	category: 'Measure-Solution'!
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:47:50'!
+!Unit methodsFor: 'accessing' stamp: 'AM 6/5/2017 16:04:50'!
+amountToUnitCorrection
+
+	^ amountToUnitCorrection! !
+
+!Unit methodsFor: 'accessing' stamp: 'AM 6/7/2017 14:33:30'!
+degreeOf: aUnit
+	
+	^ (aUnit = self)
+		ifTrue: [ 1 ]! !
+
+!Unit methodsFor: 'accessing' stamp: 'JG 6/6/2017 00:59:21'!
+label
+
+	^ label! !
+
+!Unit methodsFor: 'accessing' stamp: 'AM 6/5/2017 15:22:41'!
+unitMultiplier
+
+	^ unitMultiplier! !
+
+!Unit methodsFor: 'accessing' stamp: 'JG 6/7/2017 12:54:11'!
+units
+
+	^ (CompoundUnit new add: self withDegree: 1) units! !
+
+
+!Unit methodsFor: 'arithmetic' stamp: 'AM 6/7/2017 16:06:03'!
 * anotherUnitOrCompoundUnit
 
 	^ (anotherUnitOrCompoundUnit isKindOf: CompoundUnit)
 		ifTrue: [ anotherUnitOrCompoundUnit * self ]
-		ifFalse: [ (CompoundUnit new) add: self withDegree: 1; add: anotherUnitOrCompoundUnit withDegree: 1 ]! !
+		ifFalse: [ (CompoundUnit new) add: self withDegree: 1; add: anotherUnitOrCompoundUnit withDegree: 1]! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:48:17'!
+!Unit methodsFor: 'arithmetic' stamp: 'JG 6/7/2017 12:48:17'!
 / anotherUnit
 
 	^ self * anotherUnit reversed! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 15:06:06'!
+!Unit methodsFor: 'arithmetic' stamp: 'JG 6/5/2017 21:04:14'!
+type
+
+	^  type! !
+
+
+!Unit methodsFor: 'comparing' stamp: 'AM 6/5/2017 15:06:06'!
 = anotherLabeledUnit
 
 	^ (anotherLabeledUnit isKindOf: self class) 
 		and: [ unitMultiplier = anotherLabeledUnit unitMultiplier]! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 16:04:50'!
-amountToUnitCorrection
+!Unit methodsFor: 'comparing' stamp: 'AM 6/7/2017 15:39:13'!
+hash 
 
-	^ amountToUnitCorrection! !
+	^ type hash! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 20:51:33'!
+!Unit methodsFor: 'comparing' stamp: 'AM 6/8/2017 16:59:44'!
+isCompatibleWith: anotherUnit
+	^ type = anotherUnit type				! !
+
+
+!Unit methodsFor: 'initialization' stamp: 'JG 6/5/2017 20:51:33'!
 initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrection withLabel: aLabel withType: aUnitType
 
 	unitMultiplier _ aUnitMultiplier.
@@ -1150,46 +1267,17 @@ initializeWith: aUnitMultiplier withAmountToUnitCorrection: anAmountToUnitCorrec
 		
 	^ self! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:52:23'!
-isCompatibleWith: anotherUnit
 
-	^ self isOfTheSameTypeAs: anotherUnit! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:04:05'!
-isOfTheSameTypeAs: anotherUnit
-
-	^ type = anotherUnit type! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 14:54:10'!
+!Unit methodsFor: 'printing' stamp: 'AM 6/5/2017 14:54:10'!
 printString
 
 	^ label! !
 
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:48:56'!
+
+!Unit methodsFor: 'converting' stamp: 'JG 6/7/2017 12:48:56'!
 reversed
 
 	^ CompoundUnit new add: self withDegree: -1! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/5/2017 21:04:14'!
-type
-
-	^  type! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'AM 6/5/2017 15:22:41'!
-unitMultiplier
-
-	^ unitMultiplier! !
-
-!Unit methodsFor: 'as yet unclassified' stamp: 'JG 6/7/2017 12:54:11'!
-units
-
-	^ (CompoundUnit new add: self withDegree: 1) units! !
-
-
-!Unit methodsFor: 'accessing' stamp: 'JG 6/6/2017 00:59:21'!
-label
-
-	^ label! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
