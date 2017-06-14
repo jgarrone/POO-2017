@@ -1,27 +1,3 @@
-!classDefinition: #ShoppingCart category: #'TusLibros-Solution'!
-Bag subclass: #ShoppingCart
-	instanceVariableNames: ''
-	classVariableNames: ''
-	poolDictionaries: ''
-	category: 'TusLibros-Solution'!
-
-!ShoppingCart methodsFor: 'adding' stamp: 'JG 6/13/2017 14:25:04'!
-add: newBook
-
-	newBook ISBN isInteger 
-		ifTrue: [ super add: newBook ]
-		ifFalse: [ self error: Exception]
-		! !
-
-!ShoppingCart methodsFor: 'adding' stamp: 'JG 6/13/2017 14:32:16'!
-add: newBook withOccurrences: anAmount
-
-	(anAmount isInteger and: [ newBook ISBN isInteger ])
-		ifTrue: [ super add: newBook withOccurrences: anAmount ]
-		ifFalse: [ self error: Exception]
-		! !
-
-
 !classDefinition: #TusLibrosTest category: #'TusLibros-Solution'!
 TestCase subclass: #TusLibrosTest
 	instanceVariableNames: ''
@@ -29,121 +5,247 @@ TestCase subclass: #TusLibrosTest
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/9/2017 11:36:48'!
-test01AShoppingCartsIsEmptyWhenCreated
-	
-	self assert: ShoppingCart new isEmpty.! !
-
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:29:17'!
-test02AShoppingCartStopsBeingEmptyWhenABookIsAdded
+!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/14/2017 11:43:23'!
+test01AShoppingCartRaisesAnErrorIfTryingToAddAnItemNotIncludedInTheCatalog
 	
 	| aShoppingCart |
 
-	aShoppingCart _ ShoppingCart new.
-	aShoppingCart add: (Book with: 1).
+	aShoppingCart _ ShoppingCart withCatalog: (Dictionary new).
 	
-	self deny: aShoppingCart isEmpty.! !
+	self 
+		should: [aShoppingCart add: 'Harry Potter and the Chamber of Secrets' ] 
+		raise: Error 
+		withExceptionDo: [ :anError | 
+			self assert: aShoppingCart isEmpty.
+			self assert: anError messageText equals: ShoppingCart catalogDoesNotIncludeItemErrorDescription.
+			] ! !
 
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:29:49'!
-test03AShoppingCartKnowsHowManyBooksItHas
+!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/14/2017 11:43:26'!
+test02AShoppingCartIncludesItemsAddedThatAreOnTheCatalog
 	
-	| aShoppingCart |
+	| anItem aShoppingCart aCatalog |
 
-	aShoppingCart _ ShoppingCart new.
-	aShoppingCart add: (Book with: 1).
-	aShoppingCart add: (Book with: 2).
-		
-	self assert: aShoppingCart size equals: 2! !
+	anItem _ 'Harry Potter and the Chamber of Secrets'.
+	aCatalog _ Dictionary new.
+	aCatalog at: anItem put: 100.
+	aShoppingCart _ ShoppingCart withCatalog: aCatalog.
 
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:34:30'!
-test04AShoppingCartCanHaveMultipleBooksAddedAtOnce
+	aShoppingCart add: anItem.
 	
-	| aShoppingCart |
+	self assert: (aShoppingCart includes: anItem) ! !
 
-	aShoppingCart _ ShoppingCart new.
-	aShoppingCart add: (Book with: 1) withOccurrences: 10.
-	
-	self assert: aShoppingCart size equals: 10! !
+!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/14/2017 11:43:29'!
+test03AShoppingCartRaisesExceptionWhenTryingToAddAnUnevenAmountOfItems
 
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:23:28'!
-test05AShoppingCartRaisesExceptionIfAnObjectWithoutISBNIsAdded
-	
-	| aShoppingCart |
+	| aShoppingCart aCatalog anItem |
 
-	aShoppingCart _ ShoppingCart new.
-	
-	self should: [aShoppingCart add: Object new] raise: Exception
-	
-	! !
+	anItem _ 'Harry Potter and the Chamber of Secrets'.
+	aCatalog _ Dictionary new.
+	aCatalog at: anItem put: 100.
 
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:30:52'!
-test06AShoppingCartRaisesExceptionIfAnUnevenAmountOfBooksIsAdded
+	aShoppingCart _ ShoppingCart withCatalog: aCatalog.
 	
-	| aShoppingCart |
-
-	aShoppingCart _ ShoppingCart new.
+	self 
+		should: [aShoppingCart add: 'Harry Potter and the Chamber of Secrets' withOccurrences: 1.5 ] 
+		raise: Error 
+		withExceptionDo: [ :anError | 
+			self assert: aShoppingCart isEmpty.
+			self assert: anError messageText equals: ShoppingCart invalidAmountOfItemsErrorDescription.
+			]
 	
-	self should: [aShoppingCart add: (Book with: 1) withOccurrences: 1.5] raise: Exception
+	 ! !
+
+!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/14/2017 11:43:32'!
+test04AShoppingCartRaisesExceptionWhenTryingToAddANegativeAmountOfItems
+
+	| aShoppingCart aCatalog anItem |
+
+	anItem _ 'Harry Potter and the Chamber of Secrets'.
+	aCatalog _ Dictionary new.
+	aCatalog at: anItem put: 100.
+
+	aShoppingCart _ ShoppingCart withCatalog: aCatalog.
 	
-	! !
-
-!TusLibrosTest methodsFor: '01 Testing - ShoppingCart' stamp: 'JG 6/13/2017 14:41:45'!
-test07AShoppingCartKnowsHowManyTimesItHasABook
+	self 
+		should: [aShoppingCart add: 'Harry Potter and the Chamber of Secrets' withOccurrences: -1 ] 
+		raise: Error 
+		withExceptionDo: [ :anError | 
+			self assert: aShoppingCart isEmpty.
+			self assert: anError messageText equals: ShoppingCart invalidAmountOfItemsErrorDescription.
+			]
 	
-	| aShoppingCart aBook anotherBook |
+	 ! !
 
-	aBook _ Book with: 1.
-	anotherBook _ Book with: 2.
 
-	aShoppingCart _ ShoppingCart new.
-	aShoppingCart add: aBook withOccurrences: 2.
-	aShoppingCart add: anotherBook.
-		
-	self assert: (aShoppingCart select: [ :currentBook | currentBook = aBook]) size equals: 2.
-	self assert: (aShoppingCart select: [ :currentBook | currentBook = anotherBook]) size equals: 1.! !
+!TusLibrosTest methodsFor: '02 Testing - Cashier' stamp: 'JG 6/14/2017 11:43:13'!
+test01ACashierWontCheckoutAnEmptyShoppingCart
+
+	| aCashier aShoppingCart aCreditCard |
+	
+	aCashier _ Cashier new.
+	aShoppingCart _ ShoppingCart withCatalog: Bag new.
+	aCreditCard _ Object new.
+	
+	self 
+		should: [ aCashier checkout: aShoppingCart payingWith: aCreditCard] 
+		raise: Error 
+		withExceptionDo: [ :anError | 
+			self assert: anError messageText equals: Cashier emptyShoppingCartErrorDescription.
+			]
+	
+	 ! !
+
+!TusLibrosTest methodsFor: '02 Testing - Cashier' stamp: 'JG 6/14/2017 11:43:18'!
+test02ACashierReturnsPriceSumOfCheckedShoppingCart
+
+	| anItem aCashier aShoppingCart aCreditCard aCatalog anotherItem |
+	
+	anItem _ 'Harry Potter and the Chamber of Secrets'.	
+	anotherItem _ 'The Bible'.
+	aCatalog _ Dictionary new.
+	aCatalog at: anItem put: 100.
+	aCatalog at: anotherItem put: 200.
+	aCashier _ Cashier withCatalog: aCatalog.
+	aShoppingCart _ ShoppingCart withCatalog: aCatalog.
+	aShoppingCart add: anItem withOccurrences: 3.
+	aShoppingCart add: anotherItem.
+	aCreditCard _ Object new.
+	
+	self assert: (aCashier checkout: aShoppingCart payingWith: aCreditCard) equals: 500	
+	 ! !
 
 
-!classDefinition: #Book category: #'TusLibros-Solution'!
-Object subclass: #Book
-	instanceVariableNames: 'ISBN'
+!classDefinition: #Cashier category: #'TusLibros-Solution'!
+Object subclass: #Cashier
+	instanceVariableNames: 'catalog'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!Book methodsFor: 'accessing' stamp: 'JG 6/13/2017 14:26:40'!
-ISBN
+!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/14/2017 11:42:14'!
+checkout: aShoppingCart payingWith: aCreditCard
 	
-	^ ISBN! !
-
-
-!Book methodsFor: 'initialization' stamp: 'JG 6/13/2017 14:28:58'!
-initializeWith: anISBN
-
-	ISBN _ anISBN.
+	| anAmount |
 	
-	^ self! !
+	aShoppingCart isEmpty
+		ifTrue: [ self error: Cashier emptyShoppingCartErrorDescription ]
+		ifFalse: [ 
+			anAmount _ (aShoppingCart items collect: [ :anItem | (aShoppingCart countOf: anItem) * (catalog at: anItem) ] ) sum.
+			self debit: anAmount from: aCreditCard ].
+		
+	^ anAmount ! !
 
+!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/13/2017 21:15:17'!
+debit: anAmount from: aCreditCard
 
-!Book methodsFor: 'comparing' stamp: 'JG 6/13/2017 14:37:49'!
-= anotherBook
+	"No hacer nada"! !
 
-	^ ISBN = anotherBook ISBN! !
+!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/14/2017 11:44:30'!
+initializeWith: aCatalog
 
-!Book methodsFor: 'comparing' stamp: 'JG 6/13/2017 14:38:00'!
-hash
-
-	^ ISBN hash! !
+	catalog _ aCatalog.
+	
+	^ self ! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
-!classDefinition: 'Book class' category: #'TusLibros-Solution'!
-Book class
+!classDefinition: 'Cashier class' category: #'TusLibros-Solution'!
+Cashier class
 	instanceVariableNames: ''!
 
-!Book class methodsFor: 'as yet unclassified' stamp: 'JG 6/13/2017 14:28:35'!
-with: anISBN
+!Cashier class methodsFor: 'error description' stamp: 'JG 6/14/2017 11:43:38'!
+emptyShoppingCartErrorDescription
 
-	anISBN isInteger ifFalse: [ self error: Exception ].
-	^ self new initializeWith: anISBN.
+	^ 'The shopping cart is empty' ! !
+
+
+!Cashier class methodsFor: 'as yet unclassified' stamp: 'JG 6/14/2017 11:43:42'!
+withCatalog: aCatalog
+
+	^ self new initializeWith: aCatalog
+
+	 ! !
+
+
+!classDefinition: #ShoppingCart category: #'TusLibros-Solution'!
+Object subclass: #ShoppingCart
+	instanceVariableNames: 'contents catalog'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'TusLibros-Solution'!
+
+!ShoppingCart methodsFor: 'adding' stamp: 'JG 6/13/2017 21:51:31'!
+add: newObject
+
+	^ self add: newObject withOccurrences: 1
+		! !
+
+!ShoppingCart methodsFor: 'adding' stamp: 'JG 6/14/2017 11:42:38'!
+add: newObject withOccurrences: anAmount
+
+	(catalog includesKey: newObject) 
+		ifTrue: [ (anAmount isInteger and: anAmount > 0)
+			ifTrue: [ contents add: newObject withOccurrences: anAmount]
+			ifFalse: [ self error: ShoppingCart invalidAmountOfItemsErrorDescription ] ]
+		ifFalse: [ self error: ShoppingCart catalogDoesNotIncludeItemErrorDescription ].
+		
+	^ self ! !
+
+
+!ShoppingCart methodsFor: 'accessing' stamp: 'JG 6/14/2017 11:42:48'!
+countOf: anItem
 	
-	! !
+	^ contents occurrencesOf: anItem ! !
+
+!ShoppingCart methodsFor: 'accessing' stamp: 'JG 6/13/2017 22:02:58'!
+includes: anItem
+
+	^ contents includes: anItem! !
+
+!ShoppingCart methodsFor: 'accessing' stamp: 'JG 6/13/2017 22:08:17'!
+isEmpty
+
+	^ contents isEmpty! !
+
+!ShoppingCart methodsFor: 'accessing' stamp: 'JG 6/14/2017 11:42:54'!
+items
+
+	^ contents asSet ! !
+
+
+!ShoppingCart methodsFor: 'initializing' stamp: 'JG 6/13/2017 22:02:19'!
+initialize
+
+	contents _ Bag new.
+	
+	^ self! !
+
+!ShoppingCart methodsFor: 'initializing' stamp: 'JG 6/13/2017 20:40:03'!
+initializeWith: aCatalog
+	
+	catalog _ aCatalog.
+	
+	^ self! !
+
+"-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
+
+!classDefinition: 'ShoppingCart class' category: #'TusLibros-Solution'!
+ShoppingCart class
+	instanceVariableNames: ''!
+
+!ShoppingCart class methodsFor: 'initialization' stamp: 'JG 6/13/2017 20:39:25'!
+withCatalog: aCatalog
+
+	^ self new initializeWith: aCatalog
+! !
+
+
+!ShoppingCart class methodsFor: 'error description' stamp: 'JG 6/13/2017 21:50:10'!
+catalogDoesNotIncludeItemErrorDescription
+	
+	^ 'The item is not included in the catalog'! !
+
+!ShoppingCart class methodsFor: 'error description' stamp: 'JG 6/13/2017 22:20:33'!
+invalidAmountOfItemsErrorDescription
+
+	^ 'The amount of items is invalid'! !
