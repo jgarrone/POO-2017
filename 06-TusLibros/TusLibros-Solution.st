@@ -1,6 +1,6 @@
 !classDefinition: #TusLibrosTest category: #'TusLibros-Solution'!
 TestCase subclass: #TusLibrosTest
-	instanceVariableNames: 'aCashier aCatalog anEmptyCatalog aShoppingCartWithEmptyCatalog aShoppingCart anItem anotherItem aCreditCard anExpiredCreditCard aShoppingCartWithAnItem today aRestToObjectTransator'
+	instanceVariableNames: 'aCashier aCatalog anEmptyCatalog aShoppingCartWithEmptyCatalog aShoppingCart anItem anotherItem aCreditCard anExpiredCreditCard aShoppingCartWithAnItem today aRestToObjectTransator aClientID aPassword aCreditCardNumber aCreditCardOwner'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
@@ -63,13 +63,19 @@ test01ACashierWontCheckoutAnEmptyShoppingCart
 	
 	 ! !
 
-!TusLibrosTest methodsFor: '02 Testing - Cashier' stamp: 'JG 6/21/2017 21:06:30'!
-test02ACashierReturnsPriceSumOfCheckedShoppingCart
+!TusLibrosTest methodsFor: '02 Testing - Cashier' stamp: 'JG 6/25/2017 22:51:44'!
+test02ACashierReturnsASaleWithCreditCardAmountAndDateAfterCheckingOutShoppingCart
+
+	| aSale |
 
 	aShoppingCart add: anItem withOccurrences: 3.
 	aShoppingCart add: anotherItem.
 		
-	self assert: (aCashier checkout: aShoppingCart payingWith: aCreditCard on: today) equals: 500	
+	aSale _ aCashier checkout: aShoppingCart payingWith: aCreditCard on: today.
+
+	self assert: aSale creditCard equals: aCreditCard.
+	self assert: aSale amount equals: 500.
+	self assert: aSale date equals: today.
 	 ! !
 
 !TusLibrosTest methodsFor: '02 Testing - Cashier' stamp: 'JG 6/21/2017 21:06:34'!
@@ -124,23 +130,33 @@ test05ACashierRaisesAnExceptionWhenCreditCardIsRejected
 ! !
 
 
-!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/23/2017 19:12:37'!
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/24/2017 00:18:12'!
 test01ARecentlyCreatedCartCanBeListedAndItIsEmpty
 
-	| aClientID aPassword aCartID |
+	| aCartID |
 	
-	aClientID _ 1.
-	aPassword _ 'password'.
-	
-	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword.
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
 	
 	self assert: (aRestToObjectTransator listCartWithID: aCartID) isEmpty
 	
 
 	! !
 
-!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/23/2017 19:12:12'!
-test02TryingToListANonExistantCartRaisesAnError
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:04'!
+test02AddedItemsToACartCanBeListedWithTheirAssociatedCounts
+
+	| aCartID |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+	
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+	aRestToObjectTransator add: anotherItem toCartWithID: aCartID withOccurrences: 2.
+	
+	self assert: ((aRestToObjectTransator listCartWithID: aCartID) includes: (Association key: 1 value: anItem)).
+	self assert: ((aRestToObjectTransator listCartWithID: aCartID) includes: (Association key: 2 value: anotherItem)).! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:16'!
+test03TryingToListANonExistantCartRaisesAnError
 
 	self 
 		should: [ aRestToObjectTransator listCartWithID: 123 ] 
@@ -152,8 +168,176 @@ test02TryingToListANonExistantCartRaisesAnError
 
 	! !
 
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:25'!
+test04TryingToAddAnItemToANonExistantCartRaisesAnError
 
-!TusLibrosTest methodsFor: 'set up' stamp: 'JG 6/23/2017 19:12:23'!
+	self 
+		should: [ aRestToObjectTransator add: anItem toCartWithID: 123 ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartDoesntExistErrorDescription]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:32'!
+test05TryingToCheckOutANonExistantCartRaisesAnError
+
+	self 
+		should: [ aRestToObjectTransator checkoutCartWithID: 123 payingWith: aCreditCard ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartDoesntExistErrorDescription]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:46'!
+test06TryingToListAnExpiredCartRaisesAnError
+
+	| aCartID thirtyMinutesAgo |
+	
+	thirtyMinutesAgo _ DateAndTime now - 30 minutes.
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: thirtyMinutesAgo.
+
+	self 
+		should: [ aRestToObjectTransator listCartWithID: aCartID ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartIsExpiredErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:20:53'!
+test07TryingToAddAnItemToAnExpiredCartRaisesAnError
+
+	| aCartID thirtyMinutesAgo |
+	
+	thirtyMinutesAgo _ DateAndTime now - 30 minutes.
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: thirtyMinutesAgo.
+
+	self 
+		should: [ aRestToObjectTransator add: anItem toCartWithID: aCartID  ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartIsExpiredErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:21:05'!
+test08TryingToCheckoutAnExpiredCartRaisesAnError
+
+	| aCartID thirtyMinutesAgo |
+	
+	thirtyMinutesAgo _ DateAndTime now - 30 minutes.
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: thirtyMinutesAgo.
+
+	self 
+		should: [ aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard  ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartIsExpiredErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:21:25'!
+test09TryingToListACheckedOutCartRaisesAnError
+	
+	| aCartID |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+	aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard.
+	
+	self 
+		should: [ aRestToObjectTransator listCartWithID: aCartID. ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartDoesntExistErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:23:04'!
+test10TryingToAddAnItemToACheckedOutCartRaisesAnError
+	
+	| aCartID |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+	
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+	aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard.
+
+	self 
+		should: [ aRestToObjectTransator add: anotherItem toCartWithID: aCartID ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartDoesntExistErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 21:23:10'!
+test11TryingToCheckOutACheckedOutCartRaisesAnError
+	
+	| aCartID |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+	
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+	aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard.
+
+	self 
+		should: [ aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard. ] 
+		raise: Error
+		withExceptionDo: [ :anError |
+			self assert: anError messageText equals: RestToObjectTranslator cartDoesntExistErrorDescription ]
+		
+	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 23:30:47'!
+test12AClientWhoDidntCheckoutAnyCartHasNoPurchases
+	
+	| aCartID |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+
+	self assert: ((aRestToObjectTransator listPurchasesOfClientWithID: aClientID) isEmpty).	
+
+	! !
+
+!TusLibrosTest methodsFor: '03 Testing - Translator' stamp: 'JG 6/25/2017 23:30:36'!
+test13AClientPurchasesIncludesSaleGivenByCartCheckOut
+	
+	| aCartID aSale |
+	
+	aCartID _ aRestToObjectTransator createCartForClientWithID: aClientID andPassword: aPassword on: DateAndTime now.
+	aRestToObjectTransator add: anItem toCartWithID: aCartID.
+	aSale _ aRestToObjectTransator checkoutCartWithID: aCartID payingWith: aCreditCard.
+
+	self assert: ((aRestToObjectTransator listPurchasesOfClientWithID: aClientID) includes: aSale).	
+
+	! !
+
+
+!TusLibrosTest methodsFor: 'set up' stamp: 'JG 6/27/2017 12:52:10'!
 setUp
 
 	today _ Date today.
@@ -173,13 +357,18 @@ setUp
 	aShoppingCartWithAnItem _ ShoppingCart withCatalog: aCatalog.
 	aShoppingCartWithAnItem add: anItem.
 	
-	aCreditCard _ CreditCard withExpirationDate: Date tomorrow.
-	anExpiredCreditCard _ CreditCard withExpirationDate: Month current previous.
+	aCreditCardNumber _ 1231231231231231.
+	aCreditCardOwner _ 'John Doe'.
+	
+	aCreditCard _ CreditCard withNumber: aCreditCardNumber withExpirationDate: Date tomorrow withOwnerName: aCreditCardOwner.
+	anExpiredCreditCard _ CreditCard withNumber: aCreditCardNumber withExpirationDate: Month current previous withOwnerName: aCreditCardOwner.
 	
 	aCashier _ Cashier withCatalog: aCatalog withSalesBook: Bag new withMerchantProcessor: MerchantProcessor new.
 
-	aRestToObjectTransator _ RestToObjectTranslator withCatalog: aCatalog.	
-	! !
+	aRestToObjectTransator _ RestToObjectTranslator withCatalog: aCatalog withWebServer: WebServer new.	
+	
+	aClientID _ 1.
+	aPassword _ 'password'.! !
 
 
 !classDefinition: #Cashier category: #'TusLibros-Solution'!
@@ -189,38 +378,14 @@ Object subclass: #Cashier
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/21/2017 19:08:35'!
-checkout: aShoppingCart payingWith: aCreditCard on: aDate
-	
-	| anAmount |
-	
-	aShoppingCart isEmpty
-		ifTrue: [ self error: Cashier emptyShoppingCartErrorDescription ]
-		ifFalse: [ (aCreditCard isExpiredOn: aDate)
-			ifTrue: [ self error: Cashier expiredCreditCardErrorDescription ]
-			ifFalse: [ 
-				anAmount _ aShoppingCart price.
-				[ merchantProcessor debit: anAmount from: aCreditCard ] 
-					on: Error 
-					do: [ :anError | 
-							(anError messageText = MerchantProcessor unavailableErrorDescription) 
-								ifTrue: [ self logOrderOf: aShoppingCart payingWith: aCreditCard on: aDate ].
-							self error: anError messageText.
-						].
-				salesBook add: (Sale withCreditCard: aCreditCard withAmount: anAmount on: aDate). 
-			] 
-		].
-		
-	^ anAmount ! !
-
-!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/21/2017 19:20:25'!
+!Cashier methodsFor: 'initializing' stamp: 'JG 6/21/2017 19:20:25'!
 initialize
 
 	delayedOrders _ Bag new.
 	
 	^ self! !
 
-!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/20/2017 01:54:57'!
+!Cashier methodsFor: 'initializing' stamp: 'JG 6/20/2017 01:54:57'!
 initializeWithCatalog: aCatalog withSalesBook: aSalesBook withMerchantProcessor: aMerchantProcessor
 
 	catalog _ aCatalog.
@@ -228,12 +393,6 @@ initializeWithCatalog: aCatalog withSalesBook: aSalesBook withMerchantProcessor:
 	merchantProcessor _ aMerchantProcessor.
 	
 	^ self ! !
-
-!Cashier methodsFor: 'as yet unclassified' stamp: 'JG 6/21/2017 21:03:52'!
-logOrderOf: aShoppingCart payingWith: aCreditCard on: aDate
-
-	"Generate batch file"
-	^ delayedOrders add: (Order with: aShoppingCart payingWith: aCreditCard on: aDate).! !
 
 
 !Cashier methodsFor: 'accessing' stamp: 'JG 6/21/2017 19:21:48'!
@@ -245,6 +404,32 @@ delayedOrders
 salesBook
 	
 	^ salesBook! !
+
+
+!Cashier methodsFor: 'working' stamp: 'JG 6/25/2017 22:47:19'!
+checkout: aShoppingCart payingWith: aCreditCard on: aDate
+	
+	aShoppingCart isEmpty
+		ifTrue: [ self error: Cashier emptyShoppingCartErrorDescription ]
+		ifFalse: [ (aCreditCard isExpiredOn: aDate)
+			ifTrue: [ self error: Cashier expiredCreditCardErrorDescription ]
+			ifFalse: [ .
+				[ merchantProcessor debit: aShoppingCart price from: aCreditCard ] 
+					on: Error 
+					do: [ :anError | 
+							(anError messageText = MerchantProcessor unavailableErrorDescription) 
+								ifTrue: [ self logOrderOf: aShoppingCart payingWith: aCreditCard on: aDate ].
+							self error: anError messageText.
+						].
+				^ salesBook add: (Sale withCreditCard: aCreditCard withAmount: aShoppingCart price on: aDate). 
+			] 
+		].! !
+
+!Cashier methodsFor: 'working' stamp: 'JG 6/21/2017 21:03:52'!
+logOrderOf: aShoppingCart payingWith: aCreditCard on: aDate
+
+	"Generate batch file"
+	^ delayedOrders add: (Order with: aShoppingCart payingWith: aCreditCard on: aDate).! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -273,7 +458,7 @@ withCatalog: aCatalog withSalesBook: aSalesBook withMerchantProcessor: aMerchant
 
 !classDefinition: #CreditCard category: #'TusLibros-Solution'!
 Object subclass: #CreditCard
-	instanceVariableNames: 'expirationDate'
+	instanceVariableNames: 'expirationDate number ownerName'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
@@ -288,10 +473,12 @@ expirationYearNumber
 
 	^ expirationDate yearNumber! !
 
-!CreditCard methodsFor: 'initializing' stamp: 'JG 6/15/2017 20:07:58'!
-initializeWithExpirationDate: aDate
+!CreditCard methodsFor: 'initializing' stamp: 'JG 6/27/2017 12:51:35'!
+initializeWithNumber: aNumber withExpirationDate: aDate withOwnerName: aName
 
+	number _ aNumber.
 	expirationDate _ aDate.
+	ownerName _ aName.
 	
 	^ self! !
 
@@ -307,10 +494,10 @@ isExpiredOn: aDate
 CreditCard class
 	instanceVariableNames: ''!
 
-!CreditCard class methodsFor: 'instance creation' stamp: 'JG 6/15/2017 20:11:00'!
-withExpirationDate: aDate 
+!CreditCard class methodsFor: 'instance creation' stamp: 'JG 6/27/2017 12:51:59'!
+withNumber: aNumber withExpirationDate: aDate withOwnerName: aName
 	
-	^ self new initializeWithExpirationDate: aDate! !
+	^ self new initializeWithNumber: aNumber withExpirationDate: aDate withOwnerName: aName! !
 
 
 !classDefinition: #MerchantProcessor category: #'TusLibros-Solution'!
@@ -320,7 +507,7 @@ Object subclass: #MerchantProcessor
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!MerchantProcessor methodsFor: 'as yet unclassified' stamp: 'JG 6/20/2017 01:49:56'!
+!MerchantProcessor methodsFor: 'working' stamp: 'JG 6/20/2017 01:49:56'!
 debit: anAmount from: aCreditCard! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
@@ -361,7 +548,7 @@ MerchantProcessor subclass: #UnavailableMerchantProcessor
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!UnavailableMerchantProcessor methodsFor: 'as yet unclassified' stamp: 'JG 6/20/2017 01:54:30'!
+!UnavailableMerchantProcessor methodsFor: 'working' stamp: 'JG 6/20/2017 01:54:30'!
 debit: anAmount from: aCreditCard
 
 	self error: MerchantProcessor unavailableErrorDescription ! !
@@ -405,7 +592,7 @@ shoppingCart
 Order class
 	instanceVariableNames: ''!
 
-!Order class methodsFor: 'as yet unclassified' stamp: 'JG 6/21/2017 19:28:02'!
+!Order class methodsFor: 'instance creation' stamp: 'JG 6/21/2017 19:28:02'!
 with: aShoppingCart payingWith: aCreditCard on: aDate
 
 	^ self new initializeWith: aShoppingCart payingWith: aCreditCard on: aDate! !
@@ -413,44 +600,125 @@ with: aShoppingCart payingWith: aCreditCard on: aDate
 
 !classDefinition: #RestToObjectTranslator category: #'TusLibros-Solution'!
 Object subclass: #RestToObjectTranslator
-	instanceVariableNames: 'carts catalog'
+	instanceVariableNames: 'carts catalog webServer cartsLastUse cashier cartClientID clientPurchases'
 	classVariableNames: ''
 	poolDictionaries: ''
 	category: 'TusLibros-Solution'!
 
-!RestToObjectTranslator methodsFor: 'initializing' stamp: 'JG 6/23/2017 18:56:57'!
+!RestToObjectTranslator methodsFor: 'initializing' stamp: 'JG 6/25/2017 23:01:33'!
 initialize
 
 	carts _ Dictionary new.
+	cartsLastUse _ Dictionary new.
+	cartClientID _ Dictionary new.
+	clientPurchases _ Dictionary new.
+	cashier _ Cashier withCatalog: catalog withSalesBook: Bag new withMerchantProcessor: MerchantProcessor new.
 	
 	^ self! !
 
-!RestToObjectTranslator methodsFor: 'initializing' stamp: 'JG 6/23/2017 18:54:18'!
-initializeWith: aCatalog
+!RestToObjectTranslator methodsFor: 'initializing' stamp: 'JG 6/24/2017 00:03:52'!
+initializeWithCatalog: aCatalog withWebServer: aWebServer
 
 	catalog _ aCatalog.
+	webServer _ aWebServer.
 	
 	^ self! !
 
 
-!RestToObjectTranslator methodsFor: 'adding' stamp: 'JG 6/23/2017 18:59:52'!
-createCartForClientWithID: anID andPassword: aPassword
+!RestToObjectTranslator methodsFor: 'creating' stamp: 'JG 6/25/2017 23:31:31'!
+createCartForClientWithID: anID andPassword: aPassword on: aDateAndTime
 
-	carts at: anID put: (ShoppingCart withCatalog: catalog).
+	| cartID |
 
-	^ anID
+	cartID _ webServer generateCartID.
+	carts at: cartID put: (ShoppingCart withCatalog: catalog).
+	cartClientID at: cartID put: anID.
+	self cartWithID: cartID usedOn: aDateAndTime.
+	(clientPurchases includesKey: anID)
+		ifFalse: [ clientPurchases at: anID put: Bag new ].
+		
+	^ cartID
 	
 	
 
 	! !
 
 
-!RestToObjectTranslator methodsFor: 'accessing' stamp: 'JG 6/23/2017 19:11:44'!
+!RestToObjectTranslator methodsFor: 'accessing' stamp: 'JG 6/25/2017 23:31:07'!
+checkoutCartWithID: anID payingWith: aCreditCard
+
+	| aSale |
+
+	self validateCartWithID: anID.
+	aSale _ cashier checkout: (carts at: anID) payingWith: aCreditCard on: Date today.
+	(clientPurchases at: (cartClientID at: anID)) add: aSale.
+	self removeCartWithID: anID.
+	
+	^ aSale
+	
+! !
+
+!RestToObjectTranslator methodsFor: 'accessing' stamp: 'JG 6/24/2017 00:37:49'!
+isExpiredCartWithID: anID
+
+	^ (cartsLastUse includesKey: anID) not or: [ (cartsLastUse at: anID) < (DateAndTime now - 30 minutes) ]! !
+
+!RestToObjectTranslator methodsFor: 'accessing' stamp: 'JG 6/25/2017 16:30:40'!
 listCartWithID: anID 
 
+	self validateCartWithID: anID.
+	
+	^ (carts at: anID) sortedCounts
+	! !
+
+!RestToObjectTranslator methodsFor: 'accessing' stamp: 'JG 6/25/2017 23:28:12'!
+listPurchasesOfClientWithID: anID
+
+	^ clientPurchases at: anID! !
+
+
+!RestToObjectTranslator methodsFor: 'adding' stamp: 'JG 6/25/2017 21:03:32'!
+add: anItem toCartWithID: anID
+
+	^ self add: anItem toCartWithID: anID withOccurrences: 1! !
+
+!RestToObjectTranslator methodsFor: 'adding' stamp: 'JG 6/25/2017 21:03:15'!
+add: anItem toCartWithID: anID withOccurrences: anAmount 
+	
+	self validateCartWithID: anID.
+	
+	^ (carts at: anID) add: anItem withOccurrences: anAmount
+	! !
+
+
+!RestToObjectTranslator methodsFor: 'private' stamp: 'JG 6/24/2017 00:17:36'!
+cartWithID: cartID usedOn: aDateAndTime
+
+	cartsLastUse at: cartID put: aDateAndTime.
+	
+	^ self! !
+
+!RestToObjectTranslator methodsFor: 'private' stamp: 'JG 6/25/2017 16:28:47'!
+validateCartWithID: anID
+
 	(carts includesKey: anID)
-		ifTrue: [ ^ (carts at: anID) sortedCounts ]
-		ifFalse: [ self error: RestToObjectTranslator cartDoesntExistErrorDescription ]! !
+		ifTrue: [ 
+			(self isExpiredCartWithID: anID)
+				ifFalse: [ ^ true ]
+				ifTrue: [ self error: RestToObjectTranslator cartIsExpiredErrorDescription]
+			]
+		ifFalse: [ self error: RestToObjectTranslator cartDoesntExistErrorDescription ]
+	! !
+
+
+!RestToObjectTranslator methodsFor: 'removing' stamp: 'JG 6/25/2017 22:55:23'!
+removeCartWithID: anID
+
+	carts removeKey: anID.
+	cartsLastUse removeKey: anID.
+	cartClientID removeKey: anID.
+	
+	^ self! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -458,16 +726,21 @@ listCartWithID: anID
 RestToObjectTranslator class
 	instanceVariableNames: ''!
 
-!RestToObjectTranslator class methodsFor: 'instance creation' stamp: 'JG 6/23/2017 18:54:00'!
-withCatalog: aCatalog
+!RestToObjectTranslator class methodsFor: 'instance creation' stamp: 'JG 6/24/2017 00:03:22'!
+withCatalog: aCatalog withWebServer: aWebServer
 
-	^ self new initializeWith: aCatalog! !
+	^ self new initializeWithCatalog: aCatalog withWebServer: aWebServer! !
 
 
 !RestToObjectTranslator class methodsFor: 'error description' stamp: 'JG 6/23/2017 19:10:20'!
 cartDoesntExistErrorDescription
 
 	^ 'The cart for the ID given does not exist'! !
+
+!RestToObjectTranslator class methodsFor: 'error description' stamp: 'JG 6/24/2017 00:33:11'!
+cartIsExpiredErrorDescription
+
+	^ 'The cart for the ID given has expired'! !
 
 
 !classDefinition: #Sale category: #'TusLibros-Solution'!
@@ -485,6 +758,22 @@ initializeWithCreditCard: aCreditCard withAmount: anAmount on: aDate
 	date _ aDate.
 	
 	^ self! !
+
+
+!Sale methodsFor: 'accesing' stamp: 'JG 6/25/2017 22:50:28'!
+amount
+	
+	^ amount! !
+
+!Sale methodsFor: 'accesing' stamp: 'JG 6/25/2017 22:50:39'!
+creditCard
+	
+	^ creditCard! !
+
+!Sale methodsFor: 'accesing' stamp: 'JG 6/25/2017 22:50:32'!
+date
+	
+	^ date! !
 
 "-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- "!
 
@@ -585,3 +874,26 @@ withCatalog: aCatalog
 
 	^ self new initializeWith: aCatalog
 ! !
+
+
+!classDefinition: #WebServer category: #'TusLibros-Solution'!
+Object subclass: #WebServer
+	instanceVariableNames: 'lastIDAssignedToACart'
+	classVariableNames: ''
+	poolDictionaries: ''
+	category: 'TusLibros-Solution'!
+
+!WebServer methodsFor: 'generating' stamp: 'JG 6/24/2017 00:09:40'!
+generateCartID
+
+	lastIDAssignedToACart _ lastIDAssignedToACart + 1.
+
+	^ lastIDAssignedToACart! !
+
+
+!WebServer methodsFor: 'initializing' stamp: 'JG 6/24/2017 00:09:27'!
+initialize
+
+	lastIDAssignedToACart _ 0.
+	
+	^ self! !
