@@ -105,6 +105,17 @@ test10AddInstVariableGivesAWarningIfVariableNameAlreadyExistsAsALocalVariable
 			self assert: aWarning messageText equals: AddInstVariable invalidVariableNameWarningDescription ]
 	! !
 
+!AddInstVarTest methodsFor: 'Testing' stamp: 'JG 7/3/2017 21:36:15'!
+test11AddedInstanceVariableNameIsIncludedInRefactoredClassInstanceVariableNames
+
+	| anInstanceVariableName |
+	anInstanceVariableName _ 'variableName'.
+
+	(AddInstVariable named: anInstanceVariableName  in: anAwesomeClass) apply.
+	
+	self assert: (anAwesomeClass instVarNames includes: anInstanceVariableName )
+! !
+
 
 !AddInstVarTest methodsFor: 'set up & tear down' stamp: 'JG 6/29/2017 21:21:02'!
 setUp
@@ -147,8 +158,10 @@ Object subclass: #AddInstVariable
 	poolDictionaries: ''
 	category: 'Metaprogramacion'!
 
-!AddInstVariable methodsFor: 'as yet unclassified' stamp: 'JG 6/29/2017 19:36:14'!
-apply! !
+!AddInstVariable methodsFor: 'as yet unclassified' stamp: 'JG 7/3/2017 21:34:38'!
+apply
+
+	^ class addInstVarName: variableName ! !
 
 
 !AddInstVariable methodsFor: 'initialization' stamp: 'JG 6/29/2017 20:28:30'!
@@ -170,7 +183,12 @@ invalidVariableNameErrorDescription
 
 	^ 'The given name for the variable is invalid'! !
 
-!AddInstVariable class methodsFor: 'as yet unclassified' stamp: 'JG 6/29/2017 21:14:33'!
+!AddInstVariable class methodsFor: 'as yet unclassified' stamp: 'JG 7/3/2017 21:30:17'!
+invalidVariableNameWarningDescription
+
+	^ 'The variable name is invalid, this is a warning'! !
+
+!AddInstVariable class methodsFor: 'as yet unclassified' stamp: 'JG 7/3/2017 21:30:42'!
 named: newVariableName in: aClassToRefactor
 
 	newVariableName isEmpty 
@@ -186,6 +204,12 @@ named: newVariableName in: aClassToRefactor
 						].
 					(allInstVarNamesIncludingSubclasses includes: newVariableName)
 						ifTrue: [ self error: AddInstVariable invalidVariableNameErrorDescription ]
+						ifFalse: [
+							aClassToRefactor methodDict do: [ :aCompiledMethod | 
+								((aCompiledMethod methodNode temporaries collect: [ :aMethodNode | aMethodNode name]) includes: newVariableName)
+									ifTrue: [ Warning new signal: AddInstVariable invalidVariableNameWarningDescription ]
+								]
+						]
 					]
 			].
 	
